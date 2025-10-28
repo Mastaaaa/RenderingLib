@@ -20,7 +20,7 @@ public:
     Renderer();
     ~Renderer();
     
-    bool initialize(SDL_Window* window);
+    bool initialize(SDL_Window* window, const glm::mat4& projectionMatrix);
     void shutdown();
     void clearScreen();
     void drawSprite(Texture* texture,
@@ -28,8 +28,8 @@ public:
         glm::vec2 size,
         float rotate = 0.0f);
     void present();
-    void onWindowResize(int newWidth, int newHeight);
-    void renderScene(const Camera& camera);
+    void onWindowResize(int newWidth, int newHeight, const glm::mat4& projectionMatrix);
+    void renderScene(const glm::mat4& viewMatrix);
 
     void update(float deltaTime);
 
@@ -53,7 +53,7 @@ private:
 
     SDL_GLContext context_;
     unsigned int quadVAO_;
-    glm::mat4 projectionMatrix_;
+    glm::mat4 m_projectionMatrix;
     SDL_Window* window_;
     bool loadShaders();
     unsigned int compileShader(const std::string& source, int shaderType);

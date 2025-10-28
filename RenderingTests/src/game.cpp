@@ -2,17 +2,15 @@
 #include "renderer.h"
 #include <SDL2/SDL.h>
 #include <iostream>
-#include <glm/glm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 
 
 Game::Game()
-	: myCamera_()
+	: m_myCamera()
+	, m_windowX(800.0f)
+	, m_windowY(600.0f)
 {
-	window_ = nullptr;
-	isRunning_ = false;
+
 }
 
 Game::~Game()
@@ -33,29 +31,29 @@ bool Game::initialize()
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_SetRelativeMouseMode(SDL_TRUE);
 
-	window_ = SDL_CreateWindow(
+	m_window = SDL_CreateWindow(
 		"Space Invaders",
 		100,
 		100,
-		800,
-		600,
+		m_windowX,
+		m_windowY,
 		SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE
 	);
 
-	if (window_ == nullptr)
+	if (m_window == nullptr)
 	{
 		std::cout << "Error creating SDL window" << std::endl;
 		return false;
 	}
 
-	if (!renderer_.initialize(window_))
+	if (!m_renderer.initialize(m_window, getProjectionMatrix()))
 	{
 		std::cout << "Error initializing renderer" << std::endl;
 		return false;
 	}
 
 
-	isRunning_ = true;
+	m_isRunning = true;
 	return true;
 
 }
@@ -66,8 +64,8 @@ void Game::run()
 	Uint64 performanceFrequency = SDL_GetPerformanceFrequency();
 	Uint64 lastTime = SDL_GetPerformanceCounter();
 
-	isRunning_ = true;
-	while (isRunning_)
+	m_isRunning = true;
+	while (m_isRunning)
 	{
 		Uint64 currentTime = SDL_GetPerformanceCounter();
 		Uint64 elapsedTicks = currentTime - lastTime;
@@ -83,60 +81,50 @@ void Game::run()
 
 }
 
+//as for now, player and camera are the same, so pressing directionals makes the camera move as if it was the player
 void Game::update(float deltaTime)
 {
-	const Uint8* keyboardState = SDL_GetKeyboardState(NULL);
-	if (keyboardState[SDL_SCANCODE_W])
+	if (m_moveForward)
 	{
-		glm::vec3 flatDirection = myCamera_.cameraDirection_;
-		flatDirection.y = 0.0f;
-		flatDirection = glm::normalize(flatDirection);
-		myCamera_.cameraPosition_.x += 5.0f * deltaTime * flatDirection.x;
-		myCamera_.cameraPosition_.z += 5.0f * deltaTime * flatDirection.z;
+		m_myCamera.processKeyboard(FORWARD, deltaTime);
 	}
-	//hardcoded speed, must be..idk player speed?
-	if (keyboardState[SDL_SCANCODE_S])
+	if (m_moveBackward)
 	{
-		glm::vec3 flatDirection = myCamera_.cameraDirection_;
-		flatDirection.y = 0.0f;
-		flatDirection = glm::normalize(flatDirection);
-		myCamera_.cameraPosition_.x -= 5.0f * deltaTime * flatDirection.x;
-		myCamera_.cameraPosition_.z -= 5.0f * deltaTime * flatDirection.z;
+		m_myCamera.processKeyboard(BACKWARD, deltaTime);
 	}
-	if (keyboardState[SDL_SCANCODE_D])
+	if (m_moveRight)
 	{
-		myCamera_.cameraPosition_ += 10.0f * deltaTime * glm::normalize(glm::cross(myCamera_.cameraDirection_, myCamera_.upVector_));
+		m_myCamera.processKeyboard(RIGHT, deltaTime);
 	}
-	if (keyboardState[SDL_SCANCODE_A])
+	if (m_moveLeft)
 	{
-		myCamera_.cameraPosition_ -= 10.0f * deltaTime * glm::normalize(glm::cross(myCamera_.cameraDirection_, myCamera_.upVector_));
-	}
-	if (keyboardState[SDL_SCANCODE_SPACE])
-	{
-		myCamera_.cameraPosition_ += glm::vec3(0.0f, 10.f * deltaTime, 0.0f);
-	}
-	if (keyboardState[SDL_SCANCODE_LCTRL])
-	{
-		myCamera_.cameraPosition_ -= glm::vec3(0.0f, 10.f * deltaTime, 0.0f);
-		
+		m_myCamera.processKeyboard(LEFT, deltaTime);
 	}
 
-	myCamera_.updateCameraView();
+}
 
-
+glm::mat4 Game::getProjectionMatrix()
+{
+	return glm::perspective(glm::radians(45.0f), (float)m_windowX / (float)m_windowY, 0.1f, 100.0f);
 }
 
 void Game::render()
 {
-	renderer_.clearScreen();
+	m_renderer.clearScreen();
 
-	renderer_.renderScene(myCamera_);
+	m_renderer.renderScene(m_myCamera.getViewMatrix());
 
-	renderer_.present();
+	m_renderer.present();
 }
 
 void Game::processInput()
 {
+	//resetting movement each frame, will be a player function
+	m_moveForward = false;
+	m_moveBackward = false;
+	m_moveLeft = false;
+	m_moveRight = false;
+
 	SDL_Event event;
 
 	while (SDL_PollEvent(&event))
@@ -144,35 +132,57 @@ void Game::processInput()
 		switch (event.type)
 		{
 			case SDL_QUIT:
-				isRunning_ = false;
+				m_isRunning = false;
 				break;
 			case SDL_KEYDOWN:
 				if (event.key.keysym.sym == SDLK_ESCAPE)
 				{
-					isRunning_ = false;
+					m_isRunning = false;
 				}
 				break;
 			case SDL_WINDOWEVENT:
 				if (event.window.event == SDL_WINDOWEVENT_RESIZED)
 				{
-					renderer_.onWindowResize(event.window.data1, event.window.data2);
+					m_windowX = event.window.data1;
+					m_windowY = event.window.data2;
+					m_renderer.onWindowResize(m_windowX
+						, m_windowY
+						, getProjectionMatrix());
 				}
 				break;
 			case SDL_MOUSEMOTION:
 				float mouseX = (float)event.motion.xrel;
 				float mouseY = (float)event.motion.yrel;
-				myCamera_.processMouse(mouseX, mouseY);
+				m_myCamera.processMouse(mouseX, mouseY);
 		}
 
+	}
+
+	const Uint8* keyboardState = SDL_GetKeyboardState(NULL);
+	if (keyboardState[SDL_SCANCODE_W])
+	{
+		m_moveForward = true;
+	}
+	if (keyboardState[SDL_SCANCODE_S])
+	{
+		m_moveBackward = true;
+	}
+	if (keyboardState[SDL_SCANCODE_D])
+	{
+		m_moveRight = true;
+	}
+	if (keyboardState[SDL_SCANCODE_A])
+	{
+		m_moveLeft = true;
 	}
 }
 
 void Game::shutdown()
 {
-	if (window_)
+	if (m_window)
 	{
-		SDL_DestroyWindow(window_);
-		window_ = nullptr;
+		SDL_DestroyWindow(m_window);
+		m_window = nullptr;
 	}
 	SDL_Quit();
 }

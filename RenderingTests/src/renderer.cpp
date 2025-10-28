@@ -2,6 +2,7 @@
 #include <glad/glad.h>
 #include <iostream>
 
+//I may leak some memory with current shader using, maybe stop using pointers
 
 glm::vec3 cubePositions[] = {
 	glm::vec3(0.0f, 0.0f, 0.0f),
@@ -29,7 +30,7 @@ Renderer::Renderer()
 	, texture2_(nullptr)
 	, context_(nullptr)
 	, quadVAO_(0)
-	, projectionMatrix_(1.0f)
+	, m_projectionMatrix(1.0f)
 	, window_(nullptr)
 {
 }
@@ -71,13 +72,15 @@ void Renderer::shutdown()
 	}
 }
 
-void Renderer::onWindowResize(int newWidth, int newHeight)
+void Renderer::onWindowResize(int newWidth, int newHeight, const glm::mat4& projectionMatrix)
 {
 	glViewport(0, 0, newWidth, newHeight);
-	//camera?
+	//setting new projectionMatrix
+	m_projectionMatrix = projectionMatrix;
+	triangleShader_->setMat4("projection", projectionMatrix);
 }
 
-bool Renderer::initialize(SDL_Window* window)
+bool Renderer::initialize(SDL_Window* window, const glm::mat4& projectionMatrix)
 {
 
 	window_ = window;
@@ -102,6 +105,10 @@ bool Renderer::initialize(SDL_Window* window)
 
 	//creating shader
 	triangleShader_ = new Shader("./shaders/shader.vs", "./shaders/shader.fs");
+	m_projectionMatrix = projectionMatrix;
+	triangleShader_->use();
+	triangleShader_->setMat4("projection", projectionMatrix);
+	triangleShader_->unuse();
 
 	//---------RENDERING ROUTINE FOR TRIANGLE TYPE---------
 	//BOX
@@ -184,7 +191,7 @@ bool Renderer::initialize(SDL_Window* window)
 }
 
 
-void Renderer::renderScene(const Camera& camera)
+void Renderer::renderScene(const glm::mat4& viewMatrix)
 {
 	//use shader program
 	triangleShader_->use();
@@ -199,17 +206,16 @@ void Renderer::renderScene(const Camera& camera)
 
 	glBindVertexArray(triangleVAO_);
 
-	glm::mat4 projection;
-	projection = glm::perspective(glm::radians(45.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+	//setting view matrix property of camera
+	triangleShader_->setMat4("view", viewMatrix);
 
-	//projection matrix property of renderer
-	triangleShader_->setMat4("projection", projection);
-	//view matrix property of camera
-	triangleShader_->setMat4("view", camera.cameraView_);
+	//setting projection matrix
+	triangleShader_->setMat4("projection", m_projectionMatrix);
 
 	//box with uniform applied
 	glEnable(GL_DEPTH_TEST);
-	//object to world for each cube
+
+	//Object to world for each cube --------- will have to be retrieved from each object not hardcoded
 	for (int i = 0; i < 10; i++)
 	{
 		glm::mat4 model = glm::mat4(1.0f);
