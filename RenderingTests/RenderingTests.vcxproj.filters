@@ -41,6 +41,8 @@
     <None Include="shaders\shader.fs">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="shaders\light_shader.fs" />
+    <None Include="shaders\light_shader.vs" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\shader.h">

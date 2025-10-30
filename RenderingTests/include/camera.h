@@ -9,7 +9,9 @@ enum Camera_Movement
 	FORWARD,
 	BACKWARD,
 	LEFT,
-	RIGHT
+	RIGHT,
+	UP,
+	DOWN
 };
 
 const float c_YAW = -90.0f;
@@ -26,7 +28,7 @@ public:
 
 	glm::mat4 getViewMatrix();
 	void processMouse(float x, float y);
-	void processKeyboard(Camera_Movement direction, float deltaTime);
+	void processKeyboard(Camera_Movement direction, float deltaTime, bool isTurbo);
 
 private:
 	glm::vec3 m_position;
@@ -44,6 +46,7 @@ private:
 	float m_movementSpeed;
 	float m_mouseSensitivity;
 	float m_zoom;
+	float m_turbo;
 
 	void updateCameraVectors();
 };

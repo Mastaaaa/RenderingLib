@@ -35,11 +35,19 @@ public:
 
 private:
     Shader* triangleShader_;
+    Shader* m_lightShader;
 
     //what if I have a large amout of VAO,VBO, EBO? maybe just save the VAO.
-    unsigned int triangleVAO_;
-    unsigned int triangleVBO_;
-    unsigned int triangleEBO_;
+    unsigned int m_cubeVAO;
+    unsigned int m_cubeVBO;
+
+    //plane object
+    unsigned int m_planeVAO;
+    unsigned int m_planeVBO;
+
+    //light source
+    unsigned int m_lightVAO;
+    unsigned int m_lightVBO;
 
     //transformations
     float rotation_;

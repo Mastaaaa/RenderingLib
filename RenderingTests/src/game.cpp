@@ -86,19 +86,27 @@ void Game::update(float deltaTime)
 {
 	if (m_moveForward)
 	{
-		m_myCamera.processKeyboard(FORWARD, deltaTime);
+		m_myCamera.processKeyboard(FORWARD, deltaTime, m_isTurbo);
 	}
 	if (m_moveBackward)
 	{
-		m_myCamera.processKeyboard(BACKWARD, deltaTime);
+		m_myCamera.processKeyboard(BACKWARD, deltaTime, m_isTurbo);
 	}
 	if (m_moveRight)
 	{
-		m_myCamera.processKeyboard(RIGHT, deltaTime);
+		m_myCamera.processKeyboard(RIGHT, deltaTime, m_isTurbo);
 	}
 	if (m_moveLeft)
 	{
-		m_myCamera.processKeyboard(LEFT, deltaTime);
+		m_myCamera.processKeyboard(LEFT, deltaTime, m_isTurbo);
+	}
+	if (m_flyUp)
+	{
+		m_myCamera.processKeyboard(UP, deltaTime, m_isTurbo);
+	}
+	if (m_flyDown)
+	{
+		m_myCamera.processKeyboard(DOWN, deltaTime, m_isTurbo);
 	}
 
 }
@@ -124,6 +132,9 @@ void Game::processInput()
 	m_moveBackward = false;
 	m_moveLeft = false;
 	m_moveRight = false;
+	m_flyDown = false;
+	m_flyUp = false;
+	m_isTurbo = false;
 
 	SDL_Event event;
 
@@ -154,6 +165,7 @@ void Game::processInput()
 				float mouseX = (float)event.motion.xrel;
 				float mouseY = (float)event.motion.yrel;
 				m_myCamera.processMouse(mouseX, mouseY);
+				break;
 		}
 
 	}
@@ -174,6 +186,18 @@ void Game::processInput()
 	if (keyboardState[SDL_SCANCODE_A])
 	{
 		m_moveLeft = true;
+	}
+	if (keyboardState[SDL_SCANCODE_LCTRL])
+	{
+		m_flyDown = true;
+	}
+	if (keyboardState[SDL_SCANCODE_SPACE])
+	{
+		m_flyUp = true;
+	}
+	if (keyboardState[SDL_SCANCODE_LSHIFT])
+	{
+		m_isTurbo = true;
 	}
 }
 

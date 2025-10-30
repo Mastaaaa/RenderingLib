@@ -132,6 +132,12 @@
     <ClCompile Include="src\texture.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="shaders\light_shader.fs">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </None>
+    <None Include="shaders\light_shader.vs">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+    </None>
     <None Include="shaders\shader.fs">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
     </None>

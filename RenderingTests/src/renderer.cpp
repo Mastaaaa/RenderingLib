@@ -4,24 +4,11 @@
 
 //I may leak some memory with current shader using, maybe stop using pointers
 
-glm::vec3 cubePositions[] = {
-	glm::vec3(0.0f, 0.0f, 0.0f),
-	glm::vec3(2.0f, 5.0f, -15.0f),
-	glm::vec3(-1.5f, -2.2f, -2.5f),
-	glm::vec3(-3.8f, -2.0f, -12.3f),
-	glm::vec3(2.4f, -0.4f, -3.5f),
-	glm::vec3(-1.7f, 3.0f, -7.5f),
-	glm::vec3(1.3f, -2.0f, -2.5f),
-	glm::vec3(1.5f, 2.0f, -2.5f),
-	glm::vec3(1.5f, 0.2f, -1.5f),
-	glm::vec3(-1.3f, 1.0f, -1.5f)
-};
-
 Renderer::Renderer()
 	: triangleShader_(nullptr)
-	, triangleVAO_(0)
-	, triangleVBO_(0)
-	, triangleEBO_(0)
+	, m_lightShader(nullptr)
+	, m_cubeVAO(0)
+	, m_cubeVBO(0)
 	, rotation_(0.0f)
 	, rotationSpeed_(1.5f) // radians per second
 	, transformStatic_(1.0f)
@@ -43,26 +30,32 @@ Renderer::~Renderer()
 void Renderer::shutdown()
 {
 	// Delete GL resources
-	if (triangleEBO_)
+	if (m_cubeVBO)
 	{
-		glDeleteBuffers(1, &triangleEBO_);
-		triangleEBO_ = 0;
+		glDeleteBuffers(1, &m_cubeVBO);
+		m_cubeVBO = 0;
 	}
-	if (triangleVBO_)
+	if (m_cubeVAO)
 	{
-		glDeleteBuffers(1, &triangleVBO_);
-		triangleVBO_ = 0;
+		glDeleteVertexArrays(1, &m_cubeVAO);
+		m_cubeVAO = 0;
 	}
-	if (triangleVAO_)
+	if (m_planeVBO)
 	{
-		glDeleteVertexArrays(1, &triangleVAO_);
-		triangleVAO_ = 0;
+		glDeleteBuffers(1, &m_planeVBO);
+		m_planeVBO = 0;
+	}
+	if (m_planeVAO)
+	{
+		glDeleteVertexArrays(1, &m_planeVAO);
+		m_planeVAO = 0;
 	}
 
 	// Delete higher level resources
 	if (texture1_) { delete texture1_; texture1_ = nullptr; }
 	if (texture2_) { delete texture2_; texture2_ = nullptr; }
 	if (triangleShader_) { delete triangleShader_; triangleShader_ = nullptr; }
+	if (m_lightShader) { delete m_lightShader; m_lightShader = nullptr; }
 
 	// Delete GL context
 	if (context_)
@@ -103,12 +96,20 @@ bool Renderer::initialize(SDL_Window* window, const glm::mat4& projectionMatrix)
 	SDL_GetWindowSize(window_, &width, &height);
 	glViewport(0, 0, width, height);
 
-	//creating shader
+	//Cube and terrain shaders
 	triangleShader_ = new Shader("./shaders/shader.vs", "./shaders/shader.fs");
 	m_projectionMatrix = projectionMatrix;
 	triangleShader_->use();
 	triangleShader_->setMat4("projection", projectionMatrix);
 	triangleShader_->unuse();
+
+	//Light shaders
+	m_lightShader = new Shader("./shaders/light_shader.vs", "./shaders/light_shader.fs");
+	m_projectionMatrix = projectionMatrix;
+	m_lightShader->use();
+	m_lightShader->setMat4("projection", projectionMatrix);
+	m_lightShader->unuse();
+
 
 	//---------RENDERING ROUTINE FOR TRIANGLE TYPE---------
 	//BOX
@@ -151,23 +152,74 @@ bool Renderer::initialize(SDL_Window* window, const glm::mat4& projectionMatrix)
 	-0.5f, 0.5f, -0.5f, 0.0f, 1.0f
 	};
 
+	//LIGHT SOURCE VERTICES
+	float light_vertices[] = {
+	-0.5f, -0.5f, -0.5f,
+	0.5f, -0.5f, -0.5f, 
+	0.5f, 0.5f, -0.5f,
+	0.5f, 0.5f, -0.5f,
+	-0.5f, 0.5f, -0.5f, 
+	-0.5f, -0.5f, -0.5f,
+	-0.5f, -0.5f, 0.5f, 
+	0.5f, -0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f, 0.5f,
+	-0.5f, -0.5f, 0.5f, 
+	-0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f, -0.5f, 
+	-0.5f, -0.5f, -0.5f,
+	-0.5f, -0.5f, -0.5f,
+	-0.5f, -0.5f, 0.5f, 
+	-0.5f, 0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+	0.5f, 0.5f, -0.5f,
+	0.5f, -0.5f, -0.5f, 
+	0.5f, -0.5f, -0.5f, 
+	0.5f, -0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+	-0.5f, -0.5f, -0.5f,
+	0.5f, -0.5f, -0.5f, 
+	0.5f, -0.5f, 0.5f, 
+	0.5f, -0.5f, 0.5f,
+	-0.5f, -0.5f, 0.5f, 
+	-0.5f, -0.5f, -0.5f,
+	-0.5f, 0.5f, -0.5f, 
+	0.5f, 0.5f, -0.5f,
+	0.5f, 0.5f, 0.5f,
+	0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f, 0.5f,
+	-0.5f, 0.5f, -0.5f, 
+	};
+
+	//PLANE
+
+	float vertices_piano[] = {                
+		-1000.0f, 0.0f,  1000.0f,    0.0f,   1000.0f,  
+		 1000.0f, 0.0f,  1000.0f,    1000.0f, 1000.0f, 
+		-1000.0f, 0.0f, -1000.0f,    0.0f,   0.0f,    
+
+		-1000.0f, 0.0f, -1000.0f,    0.0f,   0.0f,    
+		 1000.0f, 0.0f,  1000.0f,    1000.0f, 1000.0f,  
+		 1000.0f, 0.0f, -1000.0f,    1000.0f, 0.0f     
+	};
 
 	
 	//texture setup;
 	texture1_ = new Texture("./texture/textureSample.jpg");
-	texture2_ = new Texture("./texture/retroTexture.jpg");
+	texture2_ = new Texture("./texture/grassTexture.jpg");
 	texture1_->bind(0);
-	texture2_->bind(1);
+
+//------------------------CUBE TYPE--------------------
 	
 	//Vertex Array Object
-	glGenVertexArrays(1, &triangleVAO_);
-	glBindVertexArray(triangleVAO_);
+	glGenVertexArrays(1, &m_cubeVAO);
+	glBindVertexArray(m_cubeVAO);
 
 	//Vertex Object Buffer setup
-	glGenBuffers(1, &triangleVBO_);
-	glBindBuffer(GL_ARRAY_BUFFER, triangleVBO_);
+	glGenBuffers(1, &m_cubeVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, m_cubeVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
 
 	//Telling how to read position from buffer
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
@@ -183,6 +235,49 @@ bool Renderer::initialize(SDL_Window* window, const glm::mat4& projectionMatrix)
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
+//------------------------PLANE TYPE------------------------
+	//Vertex Array Object
+	glGenVertexArrays(1, &m_planeVAO);
+	glBindVertexArray(m_planeVAO);
+
+	//Vertex Object Buffer setup
+	glGenBuffers(1, &m_planeVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, m_planeVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices_piano), vertices_piano, GL_STATIC_DRAW);
+
+	//Telling how to read position from buffer
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	//telling how to read texture from buffer
+	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float),
+		(void*)(3 * sizeof(float)));
+	glEnableVertexAttribArray(1);
+
+	//Unbinding
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+
+//------------------------LIGHT SOURCE------------------------
+	//Vertex Array Object
+	glGenVertexArrays(1, &m_lightVAO);
+	glBindVertexArray(m_lightVAO);
+
+	//Vertex Object Buffer setup
+	glGenBuffers(1, &m_lightVBO);
+	glBindBuffer(GL_ARRAY_BUFFER, m_lightVBO);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(light_vertices), light_vertices, GL_STATIC_DRAW);
+
+	//Telling how to read position from buffer
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+	glEnableVertexAttribArray(0);
+
+	//Unbinding
+	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
 	//Inizialize cached transforms
 	transformStatic_ = glm::mat4(1.0f);
 	transformDynamic_ = glm::mat4(1.0f);
@@ -193,47 +288,73 @@ bool Renderer::initialize(SDL_Window* window, const glm::mat4& projectionMatrix)
 
 void Renderer::renderScene(const glm::mat4& viewMatrix)
 {
-	//use shader program
+	//use cube and plane shader
 	triangleShader_->use();
 
-	//mapping texture channels
-	triangleShader_->setInt("texture1", 0);
-	triangleShader_->setInt("texture2", 1);
-
-	// Ensure textures are bound to the correct units
-	if (texture1_) texture1_->bind(0);
-	if (texture2_) texture2_->bind(1);
-
-	glBindVertexArray(triangleVAO_);
-
-	//setting view matrix property of camera
+//---------------MATRIX SCENE SETUP FOR CUBE AND PLANE-------------
 	triangleShader_->setMat4("view", viewMatrix);
-
-	//setting projection matrix
 	triangleShader_->setMat4("projection", m_projectionMatrix);
-
-	//box with uniform applied
 	glEnable(GL_DEPTH_TEST);
 
-	//Object to world for each cube --------- will have to be retrieved from each object not hardcoded
-	for (int i = 0; i < 10; i++)
-	{
-		glm::mat4 model = glm::mat4(1.0f);
-		model = glm::translate(model, cubePositions[i]);
-		float angle = 20.0f * i;
-		model = glm::rotate(model, glm::radians(angle), glm::vec3(1.0f, 0.3f, 0.5f));
-		triangleShader_->setMat4("model", model);
+//---------------TEST CUBE RENDERING-------------------;
+	glBindVertexArray(m_cubeVAO);
 
-		// Draw the cube
-		glDrawArrays(GL_TRIANGLES, 0, 36);
-	}
+	//color setup instead of shaders for the plane
+	triangleShader_->setBool("u_useTexture", false);
+	//object color hardcoded
+	triangleShader_->setVec3("u_objectColor", glm::vec3(1.0f, 0.5f, 0.31f));
+	//white light hardcoded
+	triangleShader_->setVec3("u_lightColor", glm::vec3(1.0f, 1.0f, 1.0f));
+
+	//model matrix setup for the cube
+	glm::mat4 modelCube = (1.0f);
+	modelCube = glm::translate(modelCube, glm::vec3(0.0f, -0.5f, 0.0f));
+	triangleShader_->setMat4("model", modelCube);
+
+
+	glDrawArrays(GL_TRIANGLES, 0, 36);
+
+//--------------PLANE RENDERING--------------------
+	glBindVertexArray(m_planeVAO);
+
+	//texture setup for the plane
+	triangleShader_->setInt("texture1", 0);
+	triangleShader_->setBool("u_useTexture", true);
+	texture2_->bind(0);
+
+	//model matrix setup for the plane
+	glm::mat4 modelPlane = glm::mat4(1.0f);
+	modelPlane = glm::translate(modelPlane, glm::vec3(0.0f, -1.f, 0.0f));
+	triangleShader_->setMat4("model", modelPlane);
+
+	//drawing and resetting texture
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+	triangleShader_->setBool("u_useTexture", false);
+
+//---------------MATRIX SCENE SETUP LIGHT SHADER-------------
+	//use lighting shader
+	m_lightShader->use();
+	m_lightShader->setMat4("view", viewMatrix);
+	m_lightShader->setMat4("projection", m_projectionMatrix);
+
+//----------------LIGHT SOURCE RENDERING-------------
+	glBindVertexArray(m_lightVAO);
+
+	//model matrix setup for lightSource
+	glm::mat4 modelLight = glm::mat4(1.0f);
+	modelLight = glm::translate(modelLight, glm::vec3(5.0f, 5.0f, -5.0f));
+	modelLight = glm::scale(modelLight, glm::vec3(0.2f));
+	m_lightShader->setMat4("model", modelLight);
+
+	//drawing
+	glDrawArrays(GL_TRIANGLES, 0, 36);
 
 	glBindVertexArray(0);
 }
 
 void Renderer::clearScreen()
 {
-	glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 

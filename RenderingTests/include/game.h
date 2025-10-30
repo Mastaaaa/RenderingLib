@@ -32,6 +32,9 @@ class Game
 		bool m_moveBackward;
 		bool m_moveLeft;
 		bool m_moveRight;
+		bool m_flyUp;
+		bool m_flyDown;
+		bool m_isTurbo;
 
 		//Variables
 		SDL_Window* m_window;

@@ -11,6 +11,7 @@ Camera::Camera()
 	, m_movementSpeed(c_SPEED)
 	, m_mouseSensitivity(c_SENSITIVITY)
 	, m_zoom(c_ZOOM)
+	, m_turbo(3.0f)
 {
 
 }
@@ -56,9 +57,12 @@ void Camera::processMouse(float x, float y)
 	updateCameraVectors();
 }
 
-void Camera::processKeyboard(Camera_Movement direction, float deltaTime)
+void Camera::processKeyboard(Camera_Movement direction, float deltaTime, bool isTurbo)
 {
+
 	float velocity = m_movementSpeed * deltaTime;
+	if (isTurbo) velocity *= m_turbo;
+
 	if (direction == FORWARD)
 	{
 		glm::vec3 flatFront = glm::normalize(glm::vec3(m_front.x, 0.0f, m_front.z));
@@ -77,7 +81,15 @@ void Camera::processKeyboard(Camera_Movement direction, float deltaTime)
 	{
 		m_position -= m_right * velocity;
 	}
-
+	if (direction == UP)
+	{
+		m_position += m_up * velocity;
+	}
+	if (direction == DOWN)
+	{
+		m_position -= m_up * velocity;
+	}
 }
+
 
 
